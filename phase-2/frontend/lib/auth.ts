@@ -2,7 +2,7 @@
 // Server-only — DO NOT import in client components
 
 import { betterAuth } from "better-auth";
-import { Pool } from "@neondatabase/serverless";
+import { Pool } from "pg";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("Missing required environment variable: DATABASE_URL");
