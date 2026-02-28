@@ -1,0 +1,295 @@
+openapi: "3.1.0"
+info:
+  title: Todo App Task API
+  version: "1.0.0"
+  description: >
+    Task CRUD API for the Todo App. Every endpoint requires a valid JWT token
+    in the Authorization header. All task queries are filtered by the
+    authenticated user's ID.
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Task:
+      type: object
+      required: [id, user_id, title, completed, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          example: 42
+        user_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: "Milk, eggs, bread"
+        completed:
+          type: boolean
+          default: false
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-27T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-27T10:00:00Z"
+
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: "Milk, eggs, bread"
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries and coffee"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: "Updated description"
+
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          example: "Not found"
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/{user_id}/tasks:
+    get:
+      summary: List user's tasks
+      description: Returns all tasks for the authenticated user. Optional status filter.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, pending, completed]
+            default: all
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authenticated user does not own this resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Create a new task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid JWT token
+        "403":
+          description: Authenticated user does not own this resource
+        "422":
+          description: Validation error (invalid title or description)
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      summary: Get a single task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid JWT token
+        "403":
+          description: Authenticated user does not own this resource
+        "404":
+          description: Task not found
+
+    put:
+      summary: Update a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid JWT token
+        "403":
+          description: Authenticated user does not own this resource
+        "404":
+          description: Task not found
+        "422":
+          description: Validation error
+
+    delete:
+      summary: Delete a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Task deleted successfully (no body)
+        "401":
+          description: Missing or invalid JWT token
+        "403":
+          description: Authenticated user does not own this resource
+        "404":
+          description: Task not found
+
+  /api/{user_id}/tasks/{task_id}/complete:
+    patch:
+      summary: Toggle task completion status
+      description: Flips the completed field. Pending → Completed, Completed → Pending.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task with flipped completion status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid JWT token
+        "403":
+          description: Authenticated user does not own this resource
+        "404":
+          description: Task not found
