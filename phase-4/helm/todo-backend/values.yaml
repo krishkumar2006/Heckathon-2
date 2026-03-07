@@ -1,0 +1,49 @@
+replicaCount: 1
+
+image:
+  repository: todo-backend
+  tag: "v1.0.0"
+  # CRITICAL: Never — images built directly into Minikube daemon (Constitution Law XXI)
+  pullPolicy: Never
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# Non-sensitive config (Constitution Law XX — secrets NEVER in values.yaml)
+config:
+  FRONTEND_URL: "http://localhost:3001"
+  ENVIRONMENT: "production"
+
+# Reference to K8s Secret created via k8s/secrets.yaml (GITIGNORED)
+secretName: "todo-backend-secrets"
+
+# Resource limits — Minikube conservative (Constitution Law XXVI)
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "200m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 40
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3

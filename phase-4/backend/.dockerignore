@@ -1,0 +1,39 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment secrets — NEVER in image (Constitution Law XV)
+.env
+.env.local
+.env.*
+*.env
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+
+# Tests
+__tests__/
+*.test.py
+pytest_cache/
+.coverage
+coverage/
