@@ -18,7 +18,7 @@ jobs:
 
       - name: Push backend to Hugging Face Space
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: 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
         run: |
           git config --global user.email "deploy@flowtask.ai"
           git config --global user.name "FlowTask Deploy"
