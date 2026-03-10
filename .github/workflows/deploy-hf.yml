@@ -12,44 +12,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-          lfs: true
+          python-version: "3.11"
+
+      - name: Install huggingface_hub
+        run: pip install huggingface_hub
 
       - name: Push backend to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "deploy@flowtask.ai"
-          git config --global user.name "FlowTask Deploy"
+          python3 -c "
+import os
+from huggingface_hub import HfApi
 
-          # Clone HF Space
-          git clone https://Krish222:${HF_TOKEN}@huggingface.co/spaces/Krish222/phase5 hf-space
+token = os.environ['HF_TOKEN']
+api = HfApi(token=token)
 
-          # Clear old files (keep .git)
-          cd hf-space
-          find . -not -path './.git*' -not -name '.' -delete 2>/dev/null || true
+readme = '''---\ntitle: FlowTask Backend\nemoji: lightning\ncolorFrom: indigo\ncolorTo: purple\nsdk: docker\napp_port: 8000\npinned: false\n---\n\n# FlowTask AI Backend\nFastAPI backend.\n'''
 
-          # Copy backend files
-          cp -r $GITHUB_WORKSPACE/phase-5/backend/. .
+with open('phase-5/backend/README.md', 'w') as f:
+    f.write(readme)
 
-          # Update README for HF Space
-          cat > README.md << 'EOF'
-          ---
-          title: FlowTask Backend
-          emoji: ⚡
-          colorFrom: indigo
-          colorTo: purple
-          sdk: docker
-          app_port: 8000
-          pinned: false
-          ---
-
-          # FlowTask AI Backend
-          FastAPI backend for FlowTask AI task manager.
-          EOF
-
-          # Commit and push
-          git add -A
-          git diff --cached --quiet || git commit -m "Deploy FlowTask backend $(date '+%Y-%m-%d %H:%M')"
-          git push https://Krish222:${HF_TOKEN}@huggingface.co/spaces/Krish222/phase5 main
+api.upload_folder(
+    folder_path='phase-5/backend',
+    repo_id='Krish222/phase5',
+    repo_type='space',
+    commit_message='Deploy FlowTask backend',
+    ignore_patterns=['__pycache__', '*.pyc', '.env', '*.db'],
+)
+print('Deployed successfully!')
+"
