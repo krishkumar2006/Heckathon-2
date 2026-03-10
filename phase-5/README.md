@@ -88,6 +88,58 @@ helm install todo-chatbot ./helm/todo-chatbot \
 minikube service todo-frontend --url
 ```
 
+### Minikube — Local Kubernetes
+
+```bash
+# 1. Start Minikube
+minikube start --driver=docker
+
+# 2. Install Dapr
+dapr init -k --wait
+
+# 3. Build images inside Minikube's Docker
+eval $(minikube docker-env)           # Linux/Mac
+# Windows: minikube docker-env --shell powershell | Invoke-Expression
+docker build -t todo-backend:local ./backend
+docker build -t todo-frontend:local ./frontend
+
+# 4. Deploy with Helm
+helm install todo-chatbot ./helm/todo-chatbot \
+  -f ./helm/todo-chatbot/values-minikube.yaml \
+  --set secrets.openaiApiKey="your-groq-key"
+
+# 5. Access frontend
+minikube service todo-frontend --url
+# Opens at http://localhost:30080
+```
+
+### Cloud Kubernetes (CI/CD)
+
+Push to `master` → GitHub Actions runs tests → deploys to cloud K8s cluster via Helm.
+
+**Required GitHub Secrets:**
+
+| Secret | Description |
+|--------|-------------|
+| `KUBE_CONFIG` | Base64-encoded kubeconfig for cloud cluster |
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `GROK_API_KEY` | Groq API key |
+| `BETTER_AUTH_SECRET` | JWT signing secret |
+| `FRONTEND_URL` | Deployed frontend URL |
+| `KAFKA_BROKERS` | Redpanda Cloud bootstrap servers |
+| `KAFKA_USERNAME` | SASL username |
+| `KAFKA_PASSWORD` | SASL password |
+
+```bash
+# Manual cloud deploy
+helm upgrade --install todo-chatbot ./helm/todo-chatbot \
+  -f ./helm/todo-chatbot/values-cloud.yaml \
+  --set secrets.databaseUrl="$DATABASE_URL" \
+  --set secrets.openaiApiKey="$GROK_API_KEY" \
+  --set secrets.betterAuthSecret="$BETTER_AUTH_SECRET" \
+  --set config.frontendUrl="$FRONTEND_URL"
+```
+
 ### Cloud Deployment (Vercel + Render)
 
 **Frontend → Vercel**
