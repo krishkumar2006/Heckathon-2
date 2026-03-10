@@ -1,6 +1,6 @@
-# Phase 5: Advanced Cloud Deployment - AI Todo Chatbot
+# Phase 5: Advanced Cloud Deployment — FlowTask AI
 
-Event-driven, AI-powered todo chatbot deployed on Kubernetes with Dapr and Kafka.
+Event-driven, AI-powered task manager with natural language interface, deployed on Kubernetes with Dapr and Kafka.
 
 ## Architecture
 
@@ -12,13 +12,13 @@ Frontend (Next.js) --> Backend (FastAPI) --> Dapr Sidecar --> Kafka (Redpanda)
                       (Neon/Local)        (Reminders)
 ```
 
-**Stack:** Next.js 16 + FastAPI + SQLModel + Dapr + Redpanda (Kafka) + Helm + GitHub Actions
+**Stack:** Next.js 15 + FastAPI + SQLModel + Dapr + Redpanda (Kafka) + Helm + GitHub Actions + Groq LLaMA 3.3
 
 ## Features
 
 ### Basic
-- Add, delete, update, view, and complete tasks via natural language chatbot
-- User authentication with Better Auth + JWT
+- Add, delete, update, view, and complete tasks via natural language
+- User authentication with JWT
 
 ### Intermediate
 - Task priorities (high/medium/low)
@@ -37,13 +37,12 @@ Frontend (Next.js) --> Backend (FastAPI) --> Dapr Sidecar --> Kafka (Redpanda)
 
 ### Prerequisites
 - Python 3.11+, Node.js 20+, Docker Desktop
-- For Minikube: Minikube, Helm 3, Dapr CLI
 
 ### Docker Compose (fastest)
 
 ```bash
 # Create .env file
-cp .env.example .env  # Edit with your values
+cp .env.example .env  # Fill in your values
 
 # Start all services
 docker-compose up --build
@@ -76,9 +75,8 @@ minikube start --driver=docker
 # 2. Install Dapr
 dapr init -k --wait
 
-# 3. Build images in Minikube's Docker
-eval $(minikube docker-env)    # Linux/Mac
-# Windows: minikube docker-env --shell powershell | Invoke-Expression
+# 3. Build images
+eval $(minikube docker-env)
 docker build -t todo-backend:local ./backend
 docker build -t todo-frontend:local ./frontend
 
@@ -90,33 +88,38 @@ helm install todo-chatbot ./helm/todo-chatbot \
 minikube service todo-frontend --url
 ```
 
-### Cloud Deployment (CI/CD)
+### Cloud Deployment (Vercel + Render)
 
-The GitHub Actions pipeline handles cloud deployment automatically.
+**Frontend → Vercel**
+1. Connect GitHub repo on vercel.com
+2. Set root directory: `phase-5/frontend`
+3. Add env var: `NEXT_PUBLIC_API_URL` = your Render backend URL
 
-**Required GitHub Secrets:**
+**Backend → Render**
+1. Connect GitHub repo on render.com
+2. Set root directory: `phase-5/backend`
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. Add env vars: `DATABASE_URL`, `GROK_API_KEY`, `BETTER_AUTH_SECRET`, `FRONTEND_URL`
+
+**CI/CD — GitHub Actions**
+
+Push to `master` → runs tests automatically → triggers Render deploy.
+
+Required GitHub Secret:
 
 | Secret | Description |
 |--------|-------------|
-| `KUBE_CONFIG` | Base64-encoded kubeconfig for cloud cluster |
-| `DATABASE_URL` | Neon PostgreSQL connection string |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `BETTER_AUTH_SECRET` | JWT signing secret |
-| `FRONTEND_URL` | Deployed frontend URL |
-| `KAFKA_BROKERS` | Redpanda Cloud bootstrap servers |
-| `KAFKA_USERNAME` | SASL username |
-| `KAFKA_PASSWORD` | SASL password |
-
-Push to `master` to trigger CI (test + build) then CD (deploy to cloud K8s).
+| `RENDER_DEPLOY_HOOK_URL` | Render deploy hook URL |
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Liveness probe |
-| GET | `/ready` | Readiness probe (DB + Dapr) |
+| GET | `/ready` | Readiness probe (DB check) |
 | GET | `/metrics` | Application metrics |
-| GET | `/api/{user_id}/tasks` | List tasks (supports search, filter, sort) |
+| GET | `/api/{user_id}/tasks` | List tasks (search, filter, sort) |
 | POST | `/api/{user_id}/tasks` | Create task |
 | GET | `/api/{user_id}/tasks/{id}` | Get task |
 | PUT | `/api/{user_id}/tasks/{id}` | Update task |
@@ -125,18 +128,18 @@ Push to `master` to trigger CI (test + build) then CD (deploy to cloud K8s).
 | POST | `/api/{user_id}/tasks/{id}/tags` | Add tags |
 | DELETE | `/api/{user_id}/tasks/{id}/tags/{tag}` | Remove tag |
 | POST | `/api/chat` | AI chatbot endpoint |
-| GET | `/api/notifications/stream` | SSE notifications |
+| GET | `/api/notifications/{user_id}/sse` | SSE notifications |
 
 ## Project Structure
 
 ```
-phase-5-advanced-cloud-deployment/
+phase-5/
 ├── backend/
 │   ├── main.py                    # FastAPI entry point
 │   ├── models.py                  # SQLModel database models
 │   ├── db.py                      # Database connection
 │   ├── middleware/
-│   │   └── logging_middleware.py   # Request logging + metrics
+│   │   └── logging_middleware.py  # Request logging + metrics
 │   ├── routes/
 │   │   ├── tasks.py               # Task CRUD + events
 │   │   ├── chat.py                # AI chatbot
@@ -148,30 +151,19 @@ phase-5-advanced-cloud-deployment/
 │   │   ├── event_publisher.py     # Dapr Pub/Sub publisher
 │   │   ├── reminder_service.py    # Dapr Jobs scheduler
 │   │   └── recurring_service.py   # Recurring task spawner
+│   ├── agent/
+│   │   └── todo_agent.py          # AI agent (Groq LLaMA 3.3)
 │   ├── mcp/
 │   │   └── tools.py               # MCP tools for AI agent
 │   └── tests/                     # 38 tests (contract, integration, unit)
-├── frontend/                      # Next.js chat interface
-├── helm/todo-chatbot/
-│   ├── Chart.yaml
-│   ├── values.yaml                # Base values
-│   ├── values-minikube.yaml       # Local Minikube config
-│   ├── values-cloud.yaml          # Cloud production config
-│   └── templates/
-│       ├── backend-deployment.yaml
-│       ├── frontend-deployment.yaml
-│       ├── postgres-statefulset.yaml
-│       ├── redpanda-deployment.yaml
-│       ├── dapr-components.yaml
-│       ├── secrets.yaml
-│       └── configmap.yaml
+├── frontend/                      # Next.js 15 — FlowTask UI
+├── helm/todo-chatbot/             # Kubernetes Helm chart
 ├── dapr-components/               # Local Dapr component configs
 ├── .github/workflows/
-│   ├── ci.yml                     # Build + test + push images
-│   └── cd.yml                     # Deploy to cloud K8s
+│   ├── ci.yml                     # Run tests on push
+│   └── cd.yml                     # Deploy to Render
 ├── docker-compose.yml             # Local full-stack with Dapr
-├── specs/                         # SDD specification files
-└── history/prompts/               # Prompt History Records
+└── render.yaml                    # Render deployment config
 ```
 
 ## Testing
@@ -187,25 +179,22 @@ pytest tests/ -v
 - **Integration tests**: event publishing, Dapr subscriptions
 - **Unit tests**: reminder service scheduling/cancellation
 
-## Spec-Driven Development
-
-This project was built using **Spec-Driven Development (SDD)** with Claude Code and Spec-Kit Plus:
-
-1. **Constitution** - Project principles and constraints
-2. **Specification** - Feature requirements and acceptance criteria
-3. **Plan** - Architectural decisions and component design
-4. **Tasks** - Atomic, testable implementation tasks
-5. **Implementation** - AI-generated code from specifications
-
-All spec artifacts are in `specs/` and prompt history in `history/prompts/`.
-
 ## Environment Variables
+
+### Backend
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | Required |
-| `OPENAI_API_KEY` | OpenAI API key | Required |
+| `GROK_API_KEY` | Groq API key | Required |
 | `BETTER_AUTH_SECRET` | JWT signing secret | Required |
 | `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
+| `EXTRA_ORIGINS` | Extra CORS origins (comma-separated) | - |
 | `DAPR_HTTP_PORT` | Dapr sidecar HTTP port | `3500` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+
+### Frontend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend URL | `http://localhost:8000` |
