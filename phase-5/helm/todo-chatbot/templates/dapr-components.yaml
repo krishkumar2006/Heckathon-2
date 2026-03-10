@@ -1,0 +1,69 @@
+{{- if .Values.dapr.enabled }}
+# Kafka Pub/Sub Component
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kafka-pubsub
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    {{- if and .Values.kafkaCloud .Values.kafkaCloud.enabled }}
+    # Cloud Kafka (Redpanda Cloud / Confluent)
+    - name: brokers
+      value: {{ .Values.kafkaCloud.brokers | quote }}
+    - name: consumerGroup
+      value: "todo-backend"
+    - name: authType
+      value: {{ .Values.kafkaCloud.authType | quote }}
+    {{- if eq .Values.kafkaCloud.authType "password" }}
+    - name: saslUsername
+      value: {{ .Values.kafkaCloud.saslUsername | quote }}
+    - name: saslPassword
+      value: {{ .Values.kafkaCloud.saslPassword | quote }}
+    - name: saslMechanism
+      value: {{ .Values.kafkaCloud.saslMechanism | default "SCRAM-SHA-256" | quote }}
+    - name: initialOffset
+      value: "newest"
+    {{- end }}
+    {{- if eq .Values.kafkaCloud.tlsEnabled "true" }}
+    - name: disableTls
+      value: "false"
+    {{- end }}
+    {{- else }}
+    # In-cluster Kafka (Redpanda)
+    - name: brokers
+      value: "redpanda.{{ .Release.Namespace }}.svc.cluster.local:29092"
+    - name: consumerGroup
+      value: "todo-backend"
+    - name: authType
+      value: "none"
+    {{- end }}
+---
+# Dapr State Store Component (PostgreSQL)
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: state.postgresql
+  version: v1
+  metadata:
+    - name: connectionString
+      secretKeyRef:
+        name: {{ include "todo-chatbot.secrets.name" . }}
+        key: DATABASE_URL
+---
+# Kubernetes Secret Store Component
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kubernetes-secrets
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: secretstores.kubernetes
+  version: v1
+  metadata: []
+{{- end }}

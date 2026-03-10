@@ -1,0 +1,16 @@
+apiVersion: v2
+name: todo-chatbot
+description: Todo AI Chatbot - Phase 5 Advanced Cloud Deployment with Dapr
+type: application
+version: 0.2.0
+appVersion: "2.0.0"
+keywords:
+  - todo
+  - chatbot
+  - ai
+  - kubernetes
+  - dapr
+  - kafka
+  - event-driven
+maintainers:
+  - name: Developer

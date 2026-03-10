@@ -1,0 +1,98 @@
+# ==============================================
+# Todo AI Chatbot - Minikube Values
+# Local Kubernetes deployment with Dapr
+# ==============================================
+
+# PostgreSQL - deploy in-cluster for Minikube
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  database: "todo_db"
+  username: "todo_user"
+  storage: "1Gi"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Frontend - local images, NodePort access
+frontend:
+  replicaCount: 1
+  image:
+    repository: todo-frontend
+    tag: local
+    pullPolicy: Never
+  service:
+    type: NodePort
+    port: 3000
+    targetPort: 3000
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Backend - local images
+backend:
+  replicaCount: 1
+  image:
+    repository: todo-backend
+    tag: local
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Kafka (Redpanda) - deploy in-cluster
+kafka:
+  enabled: true
+  image:
+    repository: redpandadata/redpanda
+    tag: latest
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Dapr - full stack locally
+dapr:
+  enabled: true
+  backend:
+    appId: "todo-backend"
+    appPort: "8000"
+    httpPort: "3500"
+    logLevel: "debug"
+
+# Secrets - local dev defaults
+secrets:
+  create: true
+  postgresPassword: "todo_pass"
+  # databaseUrl auto-generated from postgresql settings
+  openaiApiKey: ""
+  betterAuthSecret: "minikube-dev-secret"
+
+# ConfigMap
+config:
+  create: true
+  frontendUrl: "http://localhost:30080"
+  backendUrl: "http://todo-backend:8000"
+  apiUrl: "http://todo-backend:8000"

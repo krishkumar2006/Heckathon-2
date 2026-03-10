@@ -1,0 +1,90 @@
+# ==============================================
+# Todo AI Chatbot - Cloud Values
+# Production / Cloud Kubernetes Overrides
+# ==============================================
+# Image repos are overridden by CI/CD pipeline
+# via --set backend.image.repository=... etc.
+# ==============================================
+
+# PostgreSQL - disabled for cloud (use Neon serverless)
+postgresql:
+  enabled: false
+
+# Frontend - use LoadBalancer for cloud
+frontend:
+  replicaCount: 2
+
+  image:
+    repository: ghcr.io/your-github-username/phase-5-advanced-cloud-deployment/todo-frontend
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 3000
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Backend - higher resources for cloud
+backend:
+  replicaCount: 2
+
+  image:
+    repository: ghcr.io/your-github-username/phase-5-advanced-cloud-deployment/todo-backend
+    tag: latest
+    pullPolicy: Always
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Kafka - disabled in-cluster (use external Kafka/Redpanda Cloud)
+kafka:
+  enabled: false
+
+# Kafka Cloud Config (used by Dapr components)
+kafkaCloud:
+  enabled: true
+  # Set these via --set or secrets in CI/CD:
+  brokers: ""          # e.g. "seed-xyz.redpanda.com:9092"
+  authType: "password"
+  saslUsername: ""
+  saslPassword: ""
+  saslMechanism: "SCRAM-SHA-256"
+  tlsEnabled: "true"
+
+# Dapr
+dapr:
+  enabled: true
+  backend:
+    appId: "todo-backend"
+    appPort: "8000"
+    httpPort: "3500"
+    logLevel: "warn"
+
+# Secrets - set via CI/CD pipeline
+secrets:
+  create: true
+  postgresPassword: ""
+
+# Cloud config overrides
+config:
+  create: true
+  frontendUrl: ""  # Set via CI/CD --set config.frontendUrl=...
+  backendUrl: "http://todo-chatbot-backend:8000"
+  apiUrl: "http://todo-chatbot-backend:8000"
+
+# Image pull secrets for ghcr.io
+imagePullSecrets:
+  - name: ghcr-pull-secret

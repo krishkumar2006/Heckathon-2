@@ -1,0 +1,57 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-chatbot.fullname" . }}-redpanda
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+    app: redpanda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      containers:
+        - name: redpanda
+          image: "{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
+          args:
+            - redpanda
+            - start
+            - --smp=1
+            - --memory=512M
+            - --overprovisioned
+            - --node-id=0
+            - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+            - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+          ports:
+            - name: kafka
+              containerPort: 9092
+            - name: kafka-internal
+              containerPort: 29092
+          resources:
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+    app: redpanda
+spec:
+  type: ClusterIP
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+    - name: kafka-internal
+      port: 29092
+      targetPort: 29092
+  selector:
+    app: redpanda
+{{- end }}

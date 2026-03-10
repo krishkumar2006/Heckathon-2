@@ -1,0 +1,12 @@
+{{- if .Values.config.create -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "todo-chatbot.config.name" . }}
+  labels:
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
+data:
+  FRONTEND_URL: {{ .Values.config.frontendUrl | quote }}
+  BACKEND_URL: {{ .Values.config.backendUrl | quote }}
+  NEXT_PUBLIC_API_URL: {{ .Values.config.apiUrl | quote }}
+{{- end }}
